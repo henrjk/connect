@@ -1,0 +1,17 @@
+# For python see notes in tools/py/python-notes.rst
+language: node_js
+
+node_js:
+  - 0.12
+# The path for Xunit to output test reports
+env:
+  - XUNIT_FILE=shippable/testresults/result.xml
+
+# Create directories for test and coverage reports
+before_script:
+  - mkdir -p shippable/testresults
+  - mkdir -p shippable/codecoverage
+
+script:
+  - shippable_retry npm install
+  - npm test
