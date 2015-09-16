@@ -7,11 +7,18 @@ node_js:
 env:
   - XUNIT_FILE=shippable/testresults/result.xml
 
+before_install:
+# Activate the required node.js version
+  - source ~/.nvm/nvm.sh && nvm install $SHIPPABLE_NODE_VERSION
+  - node --version
+
+install:
+  - npm install
+
 # Create directories for test and coverage reports
 before_script:
   - mkdir -p shippable/testresults
   - mkdir -p shippable/codecoverage
 
 script:
-  - shippable_retry npm install
   - npm test
