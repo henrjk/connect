@@ -6,6 +6,10 @@
 ![Dependencies](https://img.shields.io/david/anvilresearch/connect.svg) ![License](https://img.shields.io/github/license/anvilresearch/connect.svg) ![Downloads](https://img.shields.io/npm/dm/anvil-connect.svg)
 ![npm](https://img.shields.io/npm/v/anvil-connect.svg)
 
+![build](https://img.shields.io/shippable/55f995921895ca447415d057/shippable.svg)
+![foo](https://api.shippable.com/projects/55f995921895ca447415d057/badge/shippable)
+
+
 ## What We're Doing
 ### We're building a modern authorization server to authenticate your users and protect your APIs.
 
@@ -143,4 +147,3 @@ Support and consulting also available, contact us via [the website](http://anvil
 ## MIT License
 
 Copyright (c) 2015 [Anvil Research, Inc.](http://anvil.io)
-
