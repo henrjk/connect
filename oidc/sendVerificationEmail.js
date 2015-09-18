@@ -34,7 +34,7 @@ function sendVerificationEmail (req, res, next) {
         token: token._id
       }
 
-      ;[ 'redirect_uri', 'client_id', 'response_type', 'scope' ]
+      ; [ 'redirect_uri', 'client_id', 'response_type', 'scope' ]
         .forEach(function (key) {
           var value = req.connectParams[key]
           if (value) {
