@@ -15,6 +15,7 @@ chai.should()
 {determineProvider} = require '../../../oidc'
 settings            = require '../../../boot/settings'
 providers           = require '../../../providers'
+InvalidRequestError = require '../../../errors/InvalidRequestError'
 
 
 
@@ -89,6 +90,25 @@ describe 'Determine Provider', ->
     it 'should continue', ->
       next.should.have.been.called
 
+  describe 'with unknown provider on body with requireProvider options', ->
+
+    before ->
+      req = { method: 'GET', params: {}, body: { provider: '/\\~!@#$%^&*(_+' } }
+      res = {}
+      next = sinon.spy()
+      settingsProviders = settings.providers
+      settings.providers = { 'password': {} }
+      determineProvider = determineProvider.setup {requireProvider: true}
+      determineProvider req, res, next
+
+    after ->
+      settings.providers = settingsProviders
+
+    it 'should not load a provider', ->
+      req.should.not.have.property 'provider'
+
+    it 'should continue with InvalidRequestError: Invalid provider', ->
+      next.should.have.been.calledWith new InvalidRequestError('Invalid provider')
 
 
 
@@ -110,8 +130,3 @@ describe 'Determine Provider', ->
 
     it 'should continue', ->
       next.should.have.been.called
-
-
-
-
-
