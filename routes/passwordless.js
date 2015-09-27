@@ -164,12 +164,12 @@ function renderSentMail (req, res, next) {
   // but there are differences:
   // 1. Not sure role.name authority handling makes sense here.
   // 2. emailVerified is no reason to skip this.
-  // 3. Resend URL has different path ('pwless/resend' instead of 'email/resend')
+  // 3. Resend URL has different path ('resend/passwordless' instead of 'email/resend')
   // 3. The messages are differently worded to the case.
   // So perhaps not sharing will make this somewhat easier.
 
   var resendURL = url.parse(settings.issuer)
-  resendURL.pathname = 'pwless/resend'
+  resendURL.pathname = 'resend/passwordless'
   resendURL.query = {
     email: req.connectParams.email
   }
@@ -181,7 +181,7 @@ function renderSentMail (req, res, next) {
   }
   var locals = {
     from: mailer.from,
-    resendURL: resendURL
+    resendURL: url.format(resendURL)
   }
   res.render('passwordless/pwlessSentEmail', locals)
 }
@@ -192,7 +192,7 @@ function renderSentMail (req, res, next) {
  oidc.selectConnectParams,
  oidc.verifyClient,
  oidc.validateAuthorizationParams,
- oidc.determineProvider({requireProvider: true}),
+ oidc.determineProvider.setup({requireProvider: true}),
  oidc.enforceReferrer('/signin'),
  In addition it was checked that req.body.provider === 'passwordless'
  */
@@ -216,11 +216,11 @@ function postSigninMiddleware () {
 
 // signin/pwless, signup/pwless,
 function routes (server) {
-  server.get('/pwless/resend',
+  server.get('/resend/:provider',
     oidc.selectConnectParams,
     oidc.verifyClient,
     oidc.validateAuthorizationParams,
-    oidc.determineProvider({requireProvider: true}),
+    oidc.determineProvider.setup({requireProvider: true}),
     verifyPasswordlessEnabled,
     oidc.verifyMailerConfigured,
     oidc.verifyEmailValid,
@@ -236,7 +236,7 @@ function routes (server) {
     oidc.selectConnectParams,
     oidc.verifyClient,
     oidc.validateAuthorizationParams,
-    oidc.determineProvider({requireProvider: true}),
+    oidc.determineProvider.setup({requireProvider: true}),
     verifyPasswordlessEnabled,
     verifyPasswordlessSigninToken,
     oidc.determineUserScope,

@@ -33,3 +33,9 @@ Passwordless.initialize = initialize
 Passwordless.prototype.authenticate = function (req, options) {
   throw new Error('Passwordless authenticate must not be called')
 }
+
+/**
+ * Exports
+ */
+
+module.exports = Passwordless

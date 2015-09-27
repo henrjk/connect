@@ -11,7 +11,7 @@ var InvalidRequestError = require('../errors/InvalidRequestError')
  */
 
 function determineProvider (options, req, res, next) {
-  var providerID = req.params.provider || req.body.provider
+  var providerID = req.params.provider || req.connectParams.provider
   if (providerID && settings.providers[providerID]) {
     req.provider = providers[providerID]
   }

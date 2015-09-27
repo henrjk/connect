@@ -57,7 +57,7 @@ module.exports = function (server) {
     oidc.selectConnectParams,
     oidc.verifyClient,
     oidc.validateAuthorizationParams,
-    oidc.determineProvider({requireProvider: true}),
+    oidc.determineProvider.setup({requireProvider: true}),
     oidc.enforceReferrer('/signin'),
     function (req, res, next) {
       if (req.body.provider === 'passwordless') {
