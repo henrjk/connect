@@ -62,7 +62,7 @@ module.exports = function (server) {
     function (req, res, next) {
       if (req.body.provider === 'passwordless') {
         // for passwordless flow see comments in passwordless
-        passwordless.signin(req, res, next)
+        passwordless.signin()(req, res, next)
       } else {
         passwordSignin(req, res, next)
       }
