@@ -11,24 +11,7 @@ qs = require 'qs'
 chai.use sinonChai
 chai.should()
 
-
-# First load modules which are stubbed for the test:
-proxyquire = require 'proxyquire'
-
-getMailer = () ->
-  from: "from@example.com"
-  render: {}
-  transport: {}
-  sendMail: (template, locals, options, callback) ->
-    callback(null, null) # error, info
-
-mailerStub =
-  getMailer: getMailer
-
-
-mailer = proxyquire('../../../oidc/verifyMailerConfigured', {'../boot/mailer' : mailerStub})
-
-mailer = proxyquire('../../../routes/passwordless', {'../boot/mailer' : mailerStub})
+_ = require 'lodash'
 
 # Code under test
 server = require '../../../server'
@@ -37,9 +20,23 @@ User = require('../../../models/User')
 
 request = supertest(server)
 
-
 describe 'Passwordless resend email route', ->
 
+  mailer = require '../../../boot/mailer'
+  mailer_state = {}
+  fakeMailer =
+    from: "from@example.com"
+    render: {}
+    sendMail: (tmpl, loc, opts, cb) ->
+      cb()
+    transport: {}
+
+  before ->
+    _.assign(mailer_state, mailer)
+    _.assign(mailer, fakeMailer)
+
+  after ->
+    _.assign(mailer, mailer_state)
 
   {err, res} = {}
 
@@ -61,8 +58,6 @@ describe 'Passwordless resend email route', ->
             grant_types: ['implicit']
           })
 
-        mailerStub.getMailer = getMailer
-
         sinon.stub(User, 'getByEmail').callsArgWith(1, null, null)
 
         query =
@@ -83,7 +78,6 @@ describe 'Passwordless resend email route', ->
       after ->
         User.getByEmail.restore()
         Client.get.restore()
-        delete mailerStub.getMailer
 
       it 'should respond 200', ->
         res.statusCode.should.equal 200
