@@ -17,6 +17,9 @@ _ = require 'lodash'
 server = require '../../../server'
 Client = require('../../../models/Client')
 User = require('../../../models/User')
+server = require '../../../server'
+
+settings = require '../../../boot/settings'
 
 request = supertest(server)
 
@@ -43,9 +46,19 @@ describe 'Passwordless resend email route', ->
 
   describe 'GET resend/passwordless', ->
 
-    describe 'without valid token', ->
+    describe 'success flow', ->
+
+      settings_providers_state = {}
+      pwless_settings =
+        passwordless:
+          "tokenTTL-foo": 600
+
+
 
       before (done) ->
+
+        _.assign(settings_providers_state, settings.providers)
+        _.assign(settings.providers, pwless_settings)
 
         sinon.stub(Client, 'get').callsArgWith(2, null,
           {
@@ -76,6 +89,7 @@ describe 'Passwordless resend email route', ->
             done()
 
       after ->
+        settings.providers = settings_providers_state;
         User.getByEmail.restore()
         Client.get.restore()
 
