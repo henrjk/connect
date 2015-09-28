@@ -31,7 +31,7 @@ describe 'Determine Provider', ->
   describe 'with provider on params', ->
 
     before ->
-      req = { method: 'GET', params: { provider: 'password' }, body: {} }
+      req = { method: 'GET', params: { provider: 'password' }, connectParams: {}}
       res = {}
       next = sinon.spy()
       settingsProviders = settings.providers
@@ -49,10 +49,10 @@ describe 'Determine Provider', ->
 
 
 
-  describe 'with provider on body', ->
+  describe 'with provider on connectParams', ->
 
     before ->
-      req = { method: 'GET', params: { }, body: { provider: 'password' } }
+      req = { method: 'GET', params: { }, connectParams: { provider: 'password' } }
       res = {}
       next = sinon.spy()
       settingsProviders = settings.providers
@@ -74,7 +74,7 @@ describe 'Determine Provider', ->
   describe 'with unknown provider on body', ->
 
     before ->
-      req = { method: 'GET', params: {}, body: { provider: '/\\~!@#$%^&*(_+' } }
+      req = { method: 'GET', params: {}, connectParams: { provider: '/\\~!@#$%^&*(_+' } }
       res = {}
       next = sinon.spy()
       settingsProviders = settings.providers
@@ -93,7 +93,7 @@ describe 'Determine Provider', ->
   describe 'with unknown provider on body with requireProvider options', ->
 
     before ->
-      req = { method: 'GET', params: {}, body: { provider: '/\\~!@#$%^&*(_+' } }
+      req = { method: 'GET', params: {}, connectParams: { provider: '/\\~!@#$%^&*(_+' } }
       res = {}
       next = sinon.spy()
       settingsProviders = settings.providers
@@ -115,7 +115,7 @@ describe 'Determine Provider', ->
   describe 'with unconfigured provider on body', ->
 
     before ->
-      req = { method: 'GET', params: {}, body: { provider: 'password' } }
+      req = { method: 'GET', params: {}, connectParams: { provider: 'password' } }
       res = {}
       next = sinon.spy()
       settingsProviders = settings.providers
