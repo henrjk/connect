@@ -3,6 +3,7 @@
  */
 
 var express = require('express')
+var _ = require('lodash')
 var url = require('url')
 var settings = require('../boot/settings')
 var mailer = require('../boot/mailer')
@@ -49,6 +50,11 @@ var PasswordlessDisabledError = require('../errors/PasswordlessDisabledError')
 
 var TOKEN_USAGE_SIGNIN = 'pwless-signin'
 var TOKEN_USAGE_SIGNUP = 'pwless-signup'
+var TOKEN_USAGE_SIGNIN_NEW_USER = 'pwless-new-user'
+
+var CONNECT_SUB_FIELDS = [
+  'email', 'redirect_uri', 'client_id', 'response_type', 'scope', 'nonce'
+]
 
 function verifyPasswordlessEnabled (req, res, next) {
   if (!settings.providers.passwordless) {
@@ -58,47 +64,150 @@ function verifyPasswordlessEnabled (req, res, next) {
   }
 }
 
-// perhaps this should be dispached by the authenticator
-// however I am not sure I see what that would bring?
-function verifyPasswordlessSigninToken (req, res, next) {
+function consumeToken (req, res, next) {
   if (!req.query.token) {
     return next(new InvalidRequestError('Missing token'))
   }
-
-  var view = 'passwordless/pwlessSigninLinkVerified'
-
   // consume the token
   OneTimeToken.consume(req.query.token, function (err, token) {
     if (err) { return next(err) }
+    req.token = token
+    next()
+  })
+}
 
-    // Invalid or expired token
-    if (!token || token.use !== TOKEN_USAGE_SIGNIN) {
+function extractTokenSub (req, res, next) {
+  if (!req.token) {
+    return next()
+  }
+  var token = req.token
+  if (!token.sub) {
+    return next()
+  }
+  req.connectParams = req.connectParams || {}
+  _.assign(req.connectParams, _.pick(token.sub, CONNECT_SUB_FIELDS))
+  if (token.sub) {
+    req.user_id = token.sub.user
+  }
+  next()
+}
+
+// perhaps this should be dispached by the authenticator
+// however I am not sure I see what that would bring?
+function verifyPasswordlessSigninToken (req, res, next) {
+  var view = 'passwordless/pwlessSigninLinkError'
+  var token = req.token
+
+  // Invalid or expired token
+  if (!token || token.use !== TOKEN_USAGE_SIGNIN) {
+    return res.render(view, {
+      error: 'Invalid or expired link'
+    })
+  }
+
+  if (!req.user_id || !req.user_id.trim()) {
+    return res.render(view, {
+      error: 'Invalid or expired link'
+    })
+  }
+
+  // Update the user
+  User.patch(req.user_id, {
+    dateEmailVerified: Date.now(),
+    emailVerified: true
+  }, function (err, user) {
+    if (err) { return next(err) }
+
+    // unknown user, might happen if token expired or
+    // link activated twice.
+    if (!user) {
       return res.render(view, {
-        error: 'Invalid or expired link'
+        error: 'Unable to verify email for this user.'
       })
     }
 
-    // Update the user
-    User.patch(token.sub, {
-      dateEmailVerified: Date.now(),
-      emailVerified: true
-    }, function (err, user) {
-      if (err) { return next(err) }
+    // analog to Password signin handler after authenticator.dispatch
+    // authenticated user based on password.
+    req.user = user
+    authenticator.login(req, user)
+    next()
+  })
+}
 
-      // unknown user, might happen if token expired or
-      // link activated twice.
-      if (!user) {
-        return res.render(view, {
-          error: 'Unable to verify email for this user.'
-        })
-      }
+function verifyPasswordlessSignupToken (req, res, next) {
+  var errView = 'passwordless/pwlessSigninLinkError'
+  var token = req.token
 
-      // analog to Password signin handler after authenticator.dispatch
-      // authenticated user based on password.
-      req.user = user
-      authenticator.login(req, user)
-      next()
+  // Invalid or expired token
+  if (!token || token.use !== TOKEN_USAGE_SIGNUP) {
+    return res.render(errView, {
+      error: 'Invalid or expired link'
     })
+  }
+
+  // We have a token and we now send the user to form to fill in
+  // additional information to create the user account.
+  // When that form is submitted the user should be created and
+  // then immediately signed in.
+  // We issue a new token with a different expiration so that the user can fill in the form with more leisure.
+  // The token also captures request parameters.
+  var tokenOptions = {
+    use: TOKEN_USAGE_SIGNIN_NEW_USER,
+    ttl: 60 * 60 * 24,
+    sub: token.sub
+  }
+  issueToken(req, tokenOptions, function (err, token, tokenOptions) {
+    if (err) {
+      return next(err)
+    }
+    res.render('passwordless/pwlessSignup', {
+      'email': tokenOptions.sub.email,
+      token: token._id
+    })
+  })
+}
+
+function peekToken (req, res, next) {
+  if (!req.connectParams.token) {
+    return next(new InvalidRequestError('Missing token'))
+  }
+  // consume the token
+  OneTimeToken.peek(req.connectParams.token, function (err, token) {
+    if (err) { return next(err) }
+    req.token = token
+    next()
+  })
+}
+
+function verifyPasswordlessNewUserSigninToken (req, res, next) {
+  var view = 'passwordless/pwlessSignup'
+  var token = req.token
+
+  // Invalid or expired token
+  if (!token || token.use !== TOKEN_USAGE_SIGNIN_NEW_USER) {
+    return res.render(view, {
+      error: 'Invalid or expired link'
+    })
+  }
+
+  var userOptions = {
+    private: true,
+    password: false
+  }
+
+  User.insert(req.connectParams, userOptions, function (err, user) {
+    if (err) {
+      return res.render(view, {
+        error: err,
+        token: token._id,
+        email: token.sub.email
+      })
+    }
+    OneTimeToken.revoke(token._id)
+    // don't care if token revocation fails as they expire anyhow.
+    req.user = user
+    authenticator.login(req, user)
+    next()
   })
 }
 
@@ -109,6 +218,18 @@ function signinRenderErrorInvalidEmail (req, res, next) {
     })
   }
   next()
+}
+
+function issueToken (req, tokenOptions, cb) {
+  var subObject = _.pick(req.connectParams, CONNECT_SUB_FIELDS)
+  var theTokenOptions = {
+    ttl: settings.providers.passwordless.tokenTTL || 60 * 15,
+    sub: subObject
+  }
+  theTokenOptions = _.merge(theTokenOptions, tokenOptions)
+  OneTimeToken.issue(theTokenOptions, function (err, token) {
+    cb(err, token, theTokenOptions)
+  })
 }
 
 function sendMail (req, res, next) {
@@ -123,15 +244,16 @@ function sendMail (req, res, next) {
     // The email send is tailored to whether it is a new sign up or
     // a sign in of an existing user
 
-    var email = req.connectParams.email
-
     var tokenOptions = {
-      ttl: settings.providers.passwordless.tokenTTL || 60 * 15,
       use: user ? TOKEN_USAGE_SIGNIN : TOKEN_USAGE_SIGNUP,
-      sub: user ? user._id : email
+      sub: {}
     }
-    OneTimeToken.issue(tokenOptions, function (err, token) {
+    if (user) {
+      tokenOptions.sub.user = user._id
+    }
+    issueToken(req, tokenOptions, function (err, token, tokenOptions) {
       if (err) { return next(err) }
+      var email = tokenOptions.sub.email
 
       var verifyURL = url.parse(settings.issuer)
       verifyURL.pathname = user ? 'signin/pwless' : 'signup/pwless'
@@ -232,8 +354,9 @@ function routes (server) {
     },
     sendMail
   )
-  server.get('/signin/pwless',
-    oidc.selectConnectParams,
+  server.get('/signin/:provider',
+    consumeToken,
+    extractTokenSub,
     oidc.verifyClient,
     oidc.validateAuthorizationParams,
     oidc.determineProvider.setup({requireProvider: true}),
@@ -243,10 +366,42 @@ function routes (server) {
     oidc.promptToAuthorize,
     oidc.authorize
   )
+  server.get('/signup/:provider',
+    consumeToken,
+    extractTokenSub,
+    oidc.verifyClient,
+    oidc.validateAuthorizationParams,
+    oidc.determineProvider.setup({requireProvider: true}),
+    verifyPasswordlessEnabled,
+    verifyPasswordlessSignupToken
+  )
+  server.post('/signup/:provider',
+    oidc.selectConnectParams,
+    peekToken,
+    extractTokenSub,
+    oidc.verifyClient,
+    oidc.validateAuthorizationParams,
+    oidc.determineProvider.setup({requireProvider: true}),
+    verifyPasswordlessEnabled,
+    verifyPasswordlessNewUserSigninToken,
+    oidc.determineUserScope,
+    oidc.promptToAuthorize,
+    oidc.authorize
+  )
 }
 
 module.exports = {
   routes: routes,
   signin: postSigninMiddleware,
-  verifyEnabled: verifyPasswordlessEnabled
+  middleware: {
+    verifyEnabled: verifyPasswordlessEnabled,
+    peekToken: peekToken,
+    consumeToken: consumeToken,
+    extractTokenSub: extractTokenSub,
+    verifyToken: verifyPasswordlessSigninToken,
+    renderInvalidEmail: signinRenderErrorInvalidEmail,
+    sendMail: sendMail,
+    verifySignupToken: verifyPasswordlessSignupToken,
+    verifyNewUserSigninToken: verifyPasswordlessNewUserSigninToken
+  }
 }
