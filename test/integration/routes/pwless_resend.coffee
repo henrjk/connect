@@ -17,48 +17,46 @@ _ = require 'lodash'
 server = require '../../../server'
 Client = require('../../../models/Client')
 User = require('../../../models/User')
-server = require '../../../server'
+OneTimeToken = require '../../../models/OneTimeToken'
 
-settings = require '../../../boot/settings'
+TestSettings = require '../../lib/testSettings'
 
 request = supertest(server)
 
 describe 'Passwordless resend email route', ->
 
+  settings = require '../../../boot/settings'
   mailer = require '../../../boot/mailer'
-  mailer_state = {}
-  fakeMailer =
+
+  tsSettings = new TestSettings(settings,
+    _.pick(settings, ['response_types_supported']))
+
+  tsSettings.addSettings
+    issuer: 'https://test.issuer.com'
+    providers:
+      passwordless:
+        "tokenTTL-foo": 600
+
+  tsMailer = new TestSettings(mailer,
     from: "from@example.com"
     render: {}
     sendMail: (tmpl, loc, opts, cb) ->
       cb()
     transport: {}
-
-  before ->
-    _.assign(mailer_state, mailer)
-    _.assign(mailer, fakeMailer)
+    )
 
   after ->
-    _.assign(mailer, mailer_state)
+    tsMailer.restore()
+    tsSettings.restore()
 
   {err, res} = {}
-
 
   describe 'GET resend/passwordless', ->
 
     describe 'success flow', ->
 
-      settings_providers_state = {}
-      pwless_settings =
-        passwordless:
-          "tokenTTL-foo": 600
-
-
 
       before (done) ->
-
-        _.assign(settings_providers_state, settings.providers)
-        _.assign(settings.providers, pwless_settings)
 
         sinon.stub(Client, 'get').callsArgWith(2, null,
           {
@@ -72,6 +70,9 @@ describe 'Passwordless resend email route', ->
           })
 
         sinon.stub(User, 'getByEmail').callsArgWith(1, null, null)
+
+        sinon.stub(OneTimeToken, 'issue')
+          .callsArgWith(1, null, new OneTimeToken {})
 
         query =
           client_id: '4a2c1a31-150d-49e3-9946-2909220cdb16'
@@ -89,7 +90,7 @@ describe 'Passwordless resend email route', ->
             done()
 
       after ->
-        settings.providers = settings_providers_state;
+        OneTimeToken.issue.restore()
         User.getByEmail.restore()
         Client.get.restore()
 
