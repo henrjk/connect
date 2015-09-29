@@ -6,24 +6,24 @@ expect    = chai.expect
 chai.use sinonChai
 chai.should()
 
-_ = require 'lodash'
-
-mailer = require '../../../boot/mailer'
-
-mailer_state = {}
 {sendVerificationEmail} = require '../../../oidc'
 OneTimeToken = require '../../../models/OneTimeToken'
 
+TestSettings = require '../../lib/testSettings'
 
 describe 'Send Verification Email', ->
 
+  mailer = require '../../../boot/mailer'
+  tsMailer = {}
+
   before ->
-    _.assign(mailer_state, mailer)
-    mailer.sendMail = (tmpl, loc, opts, cb) ->
-      cb()
+    tsMailer = new TestSettings(mailer,
+      sendMail : (tmpl, loc, opts, cb) ->
+        cb()
+      )
 
   after ->
-    _.assign(mailer, mailer_state)
+    tsMailer.restore()
 
 
   {req,res,next} = {}
