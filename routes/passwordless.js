@@ -3,6 +3,7 @@
  */
 
 var express = require('express')
+var _ = require('lodash')
 var url = require('url')
 var settings = require('../boot/settings')
 var mailer = require('../boot/mailer')
@@ -50,6 +51,10 @@ var PasswordlessDisabledError = require('../errors/PasswordlessDisabledError')
 var TOKEN_USAGE_SIGNIN = 'pwless-signin'
 var TOKEN_USAGE_SIGNUP = 'pwless-signup'
 
+var CONNECT_SUB_FIELDS = [
+  'email', 'redirect_uri', 'client_id', 'response_type', 'scope', 'nonce'
+]
+
 function verifyPasswordlessEnabled (req, res, next) {
   if (!settings.providers.passwordless) {
     return next(new PasswordlessDisabledError())
@@ -58,47 +63,72 @@ function verifyPasswordlessEnabled (req, res, next) {
   }
 }
 
-// perhaps this should be dispached by the authenticator
-// however I am not sure I see what that would bring?
-function verifyPasswordlessSigninToken (req, res, next) {
+function consumeToken (req, res, next) {
   if (!req.query.token) {
     return next(new InvalidRequestError('Missing token'))
   }
-
-  var view = 'passwordless/pwlessSigninLinkVerified'
-
   // consume the token
   OneTimeToken.consume(req.query.token, function (err, token) {
     if (err) { return next(err) }
+    req.token = token
+    next()
+  })
+}
 
-    // Invalid or expired token
-    if (!token || token.use !== TOKEN_USAGE_SIGNIN) {
+function extractTokenSub (req, res, next) {
+  if (!req.token) {
+    return next()
+  }
+  var token = req.token
+  if (!token.sub) {
+    return next()
+  }
+  var subObject
+  try {
+    subObject = JSON.parse(token.sub)
+  } catch (err) {
+    return next(err)
+  }
+  req.connectParams = _.pick(subObject, CONNECT_SUB_FIELDS)
+  if (subObject.user) {
+    req.user_id = subObject.user
+  }
+  next()
+}
+
+// perhaps this should be dispached by the authenticator
+// however I am not sure I see what that would bring?
+function verifyPasswordlessSigninToken (req, res, next) {
+  var view = 'passwordless/pwlessSigninLinkVerified'
+  var token = req.token
+
+  // Invalid or expired token
+  if (!token || token.use !== TOKEN_USAGE_SIGNIN) {
+    return res.render(view, {
+      error: 'Invalid or expired link'
+    })
+  }
+
+  // Update the user
+  User.patch(req.user_id, {
+    dateEmailVerified: Date.now(),
+    emailVerified: true
+  }, function (err, user) {
+    if (err) { return next(err) }
+
+    // unknown user, might happen if token expired or
+    // link activated twice.
+    if (!user) {
       return res.render(view, {
-        error: 'Invalid or expired link'
+        error: 'Unable to verify email for this user.'
       })
     }
 
-    // Update the user
-    User.patch(token.sub, {
-      dateEmailVerified: Date.now(),
-      emailVerified: true
-    }, function (err, user) {
-      if (err) { return next(err) }
-
-      // unknown user, might happen if token expired or
-      // link activated twice.
-      if (!user) {
-        return res.render(view, {
-          error: 'Unable to verify email for this user.'
-        })
-      }
-
-      // analog to Password signin handler after authenticator.dispatch
-      // authenticated user based on password.
-      req.user = user
-      authenticator.login(req, user)
-      next()
-    })
+    // analog to Password signin handler after authenticator.dispatch
+    // authenticated user based on password.
+    req.user = user
+    authenticator.login(req, user)
+    next()
   })
 }
 
@@ -123,12 +153,17 @@ function sendMail (req, res, next) {
     // The email send is tailored to whether it is a new sign up or
     // a sign in of an existing user
 
-    var email = req.connectParams.email
+    var subObject = _.pick(req.connectParams, CONNECT_SUB_FIELDS)
+    if (user) {
+      subObject.user = user._id
+    }
+
+    var email = subObject.email
 
     var tokenOptions = {
       ttl: settings.providers.passwordless.tokenTTL || 60 * 15,
       use: user ? TOKEN_USAGE_SIGNIN : TOKEN_USAGE_SIGNUP,
-      sub: user ? user._id : email
+      sub: subObject
     }
     OneTimeToken.issue(tokenOptions, function (err, token) {
       if (err) { return next(err) }
@@ -232,8 +267,9 @@ function routes (server) {
     },
     sendMail
   )
-  server.get('/signin/pwless',
-    oidc.selectConnectParams,
+  server.get('/signin/:provider',
+    consumeToken,
+    extractTokenSub,
     oidc.verifyClient,
     oidc.validateAuthorizationParams,
     oidc.determineProvider.setup({requireProvider: true}),
@@ -243,6 +279,8 @@ function routes (server) {
     oidc.promptToAuthorize,
     oidc.authorize
   )
+
+  // TODO: server.get('/signup/:provider'
 }
 
 module.exports = {
