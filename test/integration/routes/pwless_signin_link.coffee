@@ -14,7 +14,7 @@ chai.should()
 _ = require 'lodash'
 
 # Code under test
-//express = require 'express'
+express = require 'express'
 server = require '../../../server'
 Client = require('../../../models/Client')
 User = require('../../../models/User')
@@ -24,6 +24,13 @@ IDToken = require '../../../models/IDToken'
 AccessToken = require '../../../models/AccessToken'
 
 TestSettings = require '../../lib/testSettings'
+
+#server = express()
+#server.get('/XXX-signin/passwordless', (req, res) ->
+#  res.redirect('http://localhost:9000/callback_html');
+#);
+#require('../../../boot/server')(server)
+#passwordless.routes(server)
 
 request = supertest(server)
 
@@ -111,10 +118,9 @@ describe 'Passwordless signin link activation', ->
           err = error
           res = response
           done()
-      console.log('request next line')
-      # done()
 
     after ->
+      console.log('after() entering')
       express.response.redirect.restore();
       AccessToken.issue.restore()
       IDToken.prototype.initializePayload.restore()
@@ -129,4 +135,4 @@ describe 'Passwordless signin link activation', ->
 
     it 'should redirect to the callback with the proper tokens', ->
       console.log('it 2 called')
-      express.response.redirect.calledWithMatch sinon.match( /foosdjdk/ )
+      express.response.redirect.should.have.been.calledWith sinon.match( /callback/ )
