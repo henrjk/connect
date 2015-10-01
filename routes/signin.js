@@ -2,12 +2,13 @@
  * Module dependencies
  */
 
+var express = require('express')
 var oidc = require('../oidc')
 var settings = require('../boot/settings')
-var mailer = require('../boot/mailer').getMailer()
+var mailer = require('../boot/mailer')
 var authenticator = require('../lib/authenticator')
+var passwordless = require('./passwordless')
 var qs = require('qs')
-var InvalidRequestError = require('../errors/InvalidRequestError')
 var providers = require('../providers')
 
 var providerInfo = {}
@@ -47,44 +48,53 @@ module.exports = function (server) {
     })
 
   /**
-   * Password signin handler
+   * Password signin and Passwordless post handler.
    */
+
+  var passwordSignin = express.Router() // initialized further down.
 
   var handler = [
     oidc.selectConnectParams,
     oidc.verifyClient,
     oidc.validateAuthorizationParams,
-    oidc.determineProvider,
+    oidc.determineProvider.setup({requireProvider: true}),
     oidc.enforceReferrer('/signin'),
     function (req, res, next) {
-      if (!req.provider) {
-        next(new InvalidRequestError('Invalid provider'))
+      if (req.body.provider === 'passwordless') {
+        // for passwordless flow see comments in passwordless
+        passwordless.signin()(req, res, next)
       } else {
-        authenticator.dispatch(req.body.provider, req, res, next, function (err, user, info) {
-          if (err) {
-            res.render('signin', {
-              params: qs.stringify(req.body),
-              request: req.body,
-              providers: visibleProviders,
-              providerInfo: providerInfo,
-              mailSupport: !!(mailer.transport),
-              error: err.message
-            })
-          } else if (!user) {
-            res.render('signin', {
-              params: qs.stringify(req.body),
-              request: req.body,
-              providers: visibleProviders,
-              providerInfo: providerInfo,
-              mailSupport: !!(mailer.transport),
-              formError: info.message
-            })
-          } else {
-            authenticator.login(req, user)
-            next()
-          }
-        })
+        passwordSignin(req, res, next)
       }
+    }
+  ]
+
+  var passwordSigninHandler = [
+    function (req, res, next) {
+      authenticator.dispatch(req.body.provider, req, res, next, function (err, user, info) {
+        if (err) {
+          res.render('signin', {
+            params: qs.stringify(req.body),
+            request: req.body,
+            providers: visibleProviders,
+            providerInfo: providerInfo,
+            mailSupport: !!(mailer.transport),
+            error: err.message
+          })
+        } else if (!user) {
+          res.render('signin', {
+            params: qs.stringify(req.body),
+            request: req.body,
+            providers: visibleProviders,
+            providerInfo: providerInfo,
+            mailSupport: !!(mailer.transport),
+            formError: info.message
+          })
+        } else {
+          authenticator.login(req, user)
+          next()
+        }
+      })
     },
     oidc.requireVerifiedEmail(),
     oidc.determineUserScope,
@@ -93,8 +103,10 @@ module.exports = function (server) {
   ]
 
   if (oidc.beforeAuthorize) {
-    handler.splice(handler.length - 1, 0, oidc.beforeAuthorize)
+    passwordSigninHandler.splice(passwordSigninHandler.length - 1, 0, oidc.beforeAuthorize)
   }
+
+  passwordSignin.use(passwordSigninHandler)
 
   server.post('/signin', handler)
 }
