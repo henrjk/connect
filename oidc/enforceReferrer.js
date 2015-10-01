@@ -18,7 +18,6 @@ module.exports = function (pathname) {
     pathname = [ pathname ]
   }
 
-
   return function enforceReferrer (req, res, next) {
     // allows changing settings for test by not reading them
     // during module initialization.
