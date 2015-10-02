@@ -23,6 +23,8 @@ Scope = require('../../../models/Scope')
 IDToken = require '../../../models/IDToken'
 AccessToken = require '../../../models/AccessToken'
 
+http = require 'http'
+
 TestSettings = require '../../lib/testSettings'
 
 #server = express()
@@ -50,7 +52,13 @@ describe 'Passwordless signin link activation', ->
         passwordless:
           "tokenTTL-foo": 600
 
+    # If redis is not running req.session remains undefined
+    # causing an error in oidc/setSessionAmr.js which ultimately
+    # result in a internal server error by oidc/error.js
+    http.IncomingMessage.prototype.session = {}
+
   after ->
+    delete http.IncomingMessage.prototype.session
     tsSettings.restore()
 
   {err, res} = {}
@@ -129,7 +137,7 @@ describe 'Passwordless signin link activation', ->
       OneTimeToken.consume.restore()
       Client.get.restore()
 
-    it 'should consume with the query id', ->
+    it 'should consume token with the id taken of the link query', ->
       console.log('it 1 called')
       OneTimeToken.consume.should.have.been.calledWith 'token-id-random-stuff'
 
