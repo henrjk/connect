@@ -21,4 +21,5 @@ before_script:
   - mkdir -p shippable/codecoverage
 
 script:
-  - npm test
+  - NODE_ENV=test npm run test-all
+  - NODE_ENV=test npm run lint
