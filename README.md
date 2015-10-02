@@ -3,6 +3,7 @@
 [![Join the chat at https://gitter.im/anvilresearch/connect](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/anvilresearch/connect?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![Slack](http://slackin.anvil.io/badge.svg)](http://slackin.anvil.io/)
 [![IRC](https://img.shields.io/badge/Slack-IRC-green.svg)](https://anvilresearch.slack.com/account/gateways)
 
+[![Build Status](https://travis-ci.org/anvilresearch/connect.svg?branch=master)](https://travis-ci.org/anvilresearch/connect)
 ![Dependencies](https://img.shields.io/david/anvilresearch/connect.svg) ![License](https://img.shields.io/github/license/anvilresearch/connect.svg) ![Downloads](https://img.shields.io/npm/dm/anvil-connect.svg)
 ![npm](https://img.shields.io/npm/v/anvil-connect.svg)
 
@@ -10,6 +11,8 @@
 ### We're building a modern authorization server to authenticate your users and protect your APIs.
 
 #### You can find professional services and sponsor information on [our website](http://anvil.io).
+
+#### You can support us on [Bountysource](https://salt.bountysource.com/teams/anvilresearch). We are 100% open source, we appreciate the help!
 
 #### Simplified Security
 - Share user accounts between multiple apps and services with Single Sign-On (shared sessions)
@@ -34,78 +37,9 @@
 
 
 
-## Get Started
+## Getting Started
 
-#### Requirements
-
-The CLI tools require recent versions of [Node.js](https://nodejs.org/) (or
-[io.js](https://iojs.org/en/index.html)) and npm. If you plan to run your
-server with [Docker](https://www.docker.com/), you'll need Docker and Docker
-Compose installed (we provide Dockerfiles and docker-compose.yml). On Mac OS X
-you'll also need [boot2docker](http://boot2docker.io/). If you wish to run the
-server without Docker, you'll need access to a local or remotely accessible
-[Redis](http://redis.io/) instance. Python, C/C++ compiler are needed on your
-system for building native Nodejs packages, and OpenSSL is required to create
-key pairs and certificates. In production, you'll also need a reverse proxy/
-load balancer that handles SSL termination. We recommend [nginx](http://nginx.org/).
-
-#### Install the CLI tools
-
-```bash
-$ npm install -g anvil-connect anvil-connect-cli
-```
-
-
-#### Generate your deployment repository
-
-```bash
-# Make a place for your project to live
-$ mkdir path/to/project
-$ cd path/to/project
-
-# Generate a deployment repository
-$ nvl init
-? What would you like to name your Connect instance? myauthserver
-? What (sub)domain will you use? connect.example.com
-? Would you like to use Docker? Yes
-? Would you like to run Redis? Yes
-? Would you like to run nginx? Yes
-? Would you like to create a self-signed SSL cert? Yes
-? Country Name (2 letter code) US
-? State or Province Name (full name) South Dakota
-? Locality Name (eg, city) Rapid City
-? Organization Name (eg, company) Anvil Research, Inc.
-```
-
-#### Running with Docker
-
-Run docker-compose from the root of your new project.
-
-```bash
-$ docker-compose up -d
-```
-
-#### Running without Docker
-
-The first time, you'll need to install npm and bower dependencies.
-
-```bash
-$ cd connect
-$ npm install && bower install
-```
-
-Then you can start the server in with `node` or `npm`.
-
-```bash
-# development mode
-$ node server.js
-
-# production mode
-$ NODE_ENV=production node server.js
-```
-
-## Documentation
-
+* **[Getting started guide](https://github.com/anvilresearch/connect-docs/tree/master/getting-started.md)**
 * [Documentation](https://github.com/anvilresearch/connect-docs)
 * [References](https://github.com/anvilresearch/connect/wiki/References)
 
