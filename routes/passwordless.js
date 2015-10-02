@@ -286,5 +286,12 @@ function routes (server) {
 module.exports = {
   routes: routes,
   signin: postSigninMiddleware,
-  verifyEnabled: verifyPasswordlessEnabled
+  oidc: {
+    verifyEnabled: verifyPasswordlessEnabled,
+    consumeToken: consumeToken,
+    extractTokenSub: extractTokenSub,
+    verifyToken: verifyPasswordlessSigninToken,
+    enterValidEmailError: signinRenderErrorInvalidEmail,
+    sendMail: sendMail
+  }
 }
