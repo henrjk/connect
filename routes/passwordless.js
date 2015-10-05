@@ -285,7 +285,6 @@ function routes (server) {
     oidc.promptToAuthorize,
     oidc.authorize
   )
-
   // TODO: server.get('/signup/:provider'
 }
 
@@ -297,7 +296,7 @@ module.exports = {
     consumeToken: consumeToken,
     extractTokenSub: extractTokenSub,
     verifyToken: verifyPasswordlessSigninToken,
-    enterValidEmailError: signinRenderErrorInvalidEmail,
+    renderInvalidEmail: signinRenderErrorInvalidEmail,
     sendMail: sendMail
   }
 }
