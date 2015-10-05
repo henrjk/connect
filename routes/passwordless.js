@@ -109,6 +109,12 @@ function verifyPasswordlessSigninToken (req, res, next) {
     })
   }
 
+  if (!req.user_id || !req.user_id.trim()) {
+    return res.render(view, {
+      error: 'Invalid or expired link'
+    })
+  }
+
   // Update the user
   User.patch(req.user_id, {
     dateEmailVerified: Date.now(),

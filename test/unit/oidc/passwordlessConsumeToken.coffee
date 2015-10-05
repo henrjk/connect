@@ -26,52 +26,8 @@ describe 'Passwordless middleware tests', ->
 
   tsSettings = {}
 
-  describe 'passwordless enablement', ->
 
-    describe 'verify when enabled', ->
-
-      before ->
-        tsSettings = new TestSettings(settings)
-        tsSettings.addSettings
-          issuer: 'https://test.issuer.com'
-          providers:
-            passwordless: {}
-        next = sinon.spy()
-        passwordless.verifyEnabled req, res, next
-
-      after ->
-        tsSettings.restore()
-
-      it 'should continue', ->
-        next.should.have.been.called
-
-      it 'should not provide an error', ->
-        next.should.not.have.been.calledWith sinon.match.defined
-
-
-    describe 'verify when not enabled', ->
-
-      before ->
-        tsSettings = new TestSettings(settings)
-        tsSettings.addSettings
-          issuer: 'https://test.issuer.com'
-          providers: {}
-
-        next = sinon.spy()
-        passwordless.verifyEnabled req, res, next
-
-      after ->
-        tsSettings.restore()
-
-      it 'should continue', ->
-        next.should.have.been.called
-
-      it 'should provide an error', ->
-        next.should.have.been.calledWith sinon.match.instanceOf(Error)
-
-    # boot/settings will always establish a settings.providers object.
-
-  describe 'passwordless consume link token', ->
+  describe 'consume link token', ->
 
     before ->
       tsSettings = new TestSettings(settings)
@@ -98,7 +54,7 @@ describe 'Passwordless middleware tests', ->
       it 'should provide an invalid request error', ->
         next.should.have.been.calledWith sinon.match.instanceOf(InvalidRequestError)
 
-    describe 'with link token call OneTimeToken#consume', ->
+    describe 'valid token after stub OneTimeToken#consume call', ->
       {err} = {}
       {token} = {}
 
@@ -128,7 +84,7 @@ describe 'Passwordless middleware tests', ->
       it 'should set token on the request', ->
         req.token.should.equal token
 
-    describe 'with link token call OneTimeToken#consume not found case', ->
+    describe 'token not found case in OneTimeToken#consume not found case results in next with no errors and req.token = null', ->
       {err} = {}
 
       before (done) ->
@@ -156,7 +112,7 @@ describe 'Passwordless middleware tests', ->
       it 'should have null token on the request', ->
         expect(req.token).to.be.null
 
-    describe 'with link token call OneTimeToken#consume error case', ->
+    describe 'OneTimeToken#consume returns err reports error in next(err) call', ->
       {err} = {}
 
       before (done) ->
