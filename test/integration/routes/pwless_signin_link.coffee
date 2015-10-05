@@ -27,13 +27,6 @@ http = require 'http'
 
 TestSettings = require '../../lib/testSettings'
 
-#server = express()
-#server.get('/XXX-signin/passwordless', (req, res) ->
-#  res.redirect('http://localhost:9000/callback_html');
-#);
-#require('../../../boot/server')(server)
-#passwordless.routes(server)
-
 request = supertest(server)
 
 describe 'Passwordless signin link activation', ->
@@ -65,36 +58,44 @@ describe 'Passwordless signin link activation', ->
 
 
   describe 'success flow existing user sign-IN', ->
-    tokenOptions = {}
+
+    session = {}
+
+    tokenOptions =
+      exp: Math.round(Date.now() / 1000) + 3600
+      use: 'pwless-signin'
+      sub: JSON.stringify
+        email: 'peter@mary.com'
+        client_id: '4a2c1a31-150d-49e3-9946-2909220cdb16'
+        redirect_uri: 'http://localhost:9000/callback_popup.html'
+        response_type: 'id_token token'
+        scope: 'openid profile'
+        nonce: 'KG4vsD0bfAjbEdCMurmiPxzEcpFGoguYGR7b3cj3AMs'
+        user: 'peters-user-uuid'
+
+    client =
+      client_name: 'unit test pwless_signin'
+      _id: '4a2c1a31-150d-49e3-9946-2909220cdb16'
+      redirect_uris: [
+        'http://localhost:9000/callback_popup.html'
+      ]
+      trusted: true
+      response_types: ['id_token token']
+      grant_types: ['implicit']
+
     {scope,scopes} = {}
 
     before (done) ->
-      tokenOptions =
-        exp: Math.round(Date.now() / 1000) + 3600
-        use: 'pwless-signin'
-        sub: JSON.stringify
-          email: 'peter@mary.com'
-          client_id: '4a2c1a31-150d-49e3-9946-2909220cdb16'
-          redirect_uri: 'http://localhost:9000/callback_popup.html'
-          response_type: 'id_token token'
-          scope: 'openid profile'
-          nonce: 'KG4vsD0bfAjbEdCMurmiPxzEcpFGoguYGR7b3cj3AMs'
-          user: 'peters-user-uuid'
+
+      # If redis is not running req.session remains undefined
+      # causing an error in oidc/setSessionAmr.js which ultimately
+      # result in a internal server error by oidc/error.js
+      http.IncomingMessage.prototype.session = session
 
       sinon.stub(OneTimeToken, 'consume')
         .callsArgWith(1, null, new OneTimeToken tokenOptions)
 
-      sinon.stub(Client, 'get').callsArgWith(2, null,
-        {
-          client_name: 'unit test pwless_signin'
-          _id: '4a2c1a31-150d-49e3-9946-2909220cdb16'
-          redirect_uris: [
-            'http://localhost:9000/callback_popup.html'
-          ]
-          trusted: true
-          response_types: ['id_token token']
-          grant_types: ['implicit']
-        })
+      sinon.stub(Client, 'get').callsArgWith(2, null, client)
 
       user = new User _id: tokenOptions.sub.user
 
@@ -122,13 +123,11 @@ describe 'Passwordless signin link activation', ->
         .redirects(0)
         .query(query)
         .end (error, response) ->
-          console.log('request.end callback called', error, response)
           err = error
           res = response
           done()
 
     after ->
-      console.log('after() entering')
       express.response.redirect.restore();
       AccessToken.issue.restore()
       IDToken.prototype.initializePayload.restore()
@@ -136,11 +135,40 @@ describe 'Passwordless signin link activation', ->
       User.patch.restore()
       OneTimeToken.consume.restore()
       Client.get.restore()
+      delete http.IncomingMessage.prototype.session
 
     it 'should consume token with the id taken of the link query', ->
-      console.log('it 1 called')
       OneTimeToken.consume.should.have.been.calledWith 'token-id-random-stuff'
 
-    it 'should redirect to the callback with the proper tokens', ->
-      console.log('it 2 called')
-      express.response.redirect.should.have.been.calledWith sinon.match( /callback/ )
+    it 'should respond with an http redirect', ->
+      res.statusCode.should.equal 302
+
+    it 'should redirect to the callback', ->
+      express.response.redirect.should.have.been.calledWith sinon.match( client.redirect_uris[0] )
+
+    it 'should provide a uri fragment', ->
+      express.response.redirect.should.have.been.calledWith sinon.match('#')
+
+    it 'should provide access_token', ->
+      express.response.redirect.should.have.been.calledWith sinon.match('access_token=')
+
+    it 'should provide token_type', ->
+      express.response.redirect.should.have.been.calledWith sinon.match('token_type=Bearer')
+
+    it 'should provide expires_in', ->
+      express.response.redirect.should.have.been.calledWith sinon.match('expires_in=3600')
+
+    it 'should provide id_token', ->
+      express.response.redirect.should.have.been.calledWith sinon.match('id_token=')
+
+    # TODO: should there be a state here?
+    # it 'should provide state', ->
+    #   express.response.redirect.should.have.been.calledWith # sinon.match req.connectParams.state
+
+    it 'should provide session_state', ->
+      express.response.redirect.should.have.been.calledWith sinon.match('session_state=')
+
+    it 'should include `amr` claim in id_token', ->
+      IDToken.prototype.initializePayload.should.have.been.calledWith(
+        sinon.match amr: session.amr
+      )
