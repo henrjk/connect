@@ -35,6 +35,7 @@ describe 'Test on settings', ->
             origReadFileSync.call(fs, file, options)
 
         proxyquire.noPreserveCache()
+        configLoad = proxyquire(config, {})
         settings = proxyquire('../../../boot/settings', {})
 
       after ->
