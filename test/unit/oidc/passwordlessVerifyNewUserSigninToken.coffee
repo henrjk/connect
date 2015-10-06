@@ -27,7 +27,7 @@ describe 'Passwordless middleware tests', ->
   tsSettings = {}
 
 
-  describe 'verify sign-in token', ->
+  describe 'verify new user create account and sign-in token', ->
 
     {view, view_info} = {}
 
@@ -55,14 +55,14 @@ describe 'Passwordless middleware tests', ->
           err = error
           done()
 
-        passwordless.verifyToken req, res, next
+        passwordless.verifyNewUserSigninToken req, res, next
 
       it 'should not continue', ->
         next.should.not.have.been.called
 
       it 'should render view with error', ->
         res.render.should.have.been.
-          calledWith 'passwordless/pwlessSigninLinkError',
+          calledWith 'passwordless/pwlessSignup',
           sinon.match({
             error: sinon.match.string
             })
@@ -80,19 +80,19 @@ describe 'Passwordless middleware tests', ->
           err = error
           done()
 
-        passwordless.verifyToken req, res, next
+        passwordless.verifyNewUserSigninToken req, res, next
 
       it 'should not continue', ->
         next.should.not.have.been.called
 
       it 'should render view with error', ->
         res.render.should.have.been.
-          calledWith 'passwordless/pwlessSigninLinkError',
+          calledWith 'passwordless/pwlessSignup',
           sinon.match({
             error: sinon.match.string
             })
 
-    describe 'req.token.use is not pwless-signin', ->
+    describe 'req.token.use is not pwless-new-user', ->
       before (done) ->
         req =
           token:
@@ -107,24 +107,29 @@ describe 'Passwordless middleware tests', ->
           err = error
           done()
 
-        passwordless.verifyToken req, res, next
+        passwordless.verifyNewUserSigninToken req, res, next
 
       it 'should not continue', ->
         next.should.not.have.been.called
 
       it 'should render view with error', ->
         res.render.should.have.been.
-          calledWith 'passwordless/pwlessSigninLinkError',
+          calledWith 'passwordless/pwlessSignup',
           sinon.match({
             error: sinon.match.string
             })
 
 
-    describe 'req.user_id is undefined', ->
+    describe 'User insert fails with error', ->
       before (done) ->
         req =
+          session: {}
           token:
-            use: 'pwless-signin'
+            _id: 'token-id'
+            use: 'pwless-new-user'
+            sub:
+              email: 'test@test.org'
+        req.connectParams = {}
 
         res = render: sinon.spy (vw, vw_info) ->
           view = vw
@@ -135,110 +140,28 @@ describe 'Passwordless middleware tests', ->
           err = error
           done()
 
-        passwordless.verifyToken req, res, next
+        sinon.stub(User, 'insert').callsArgWith(2, "Field foo must have format YYY/MM/DD")
 
-      it 'should not continue', ->
-        next.should.not.have.been.called
-
-      it 'should render view with error', ->
-        res.render.should.have.been.
-          calledWith 'passwordless/pwlessSigninLinkError',
-          sinon.match({
-            error: sinon.match.string
-            })
-
-    describe 'req.user_id is only whitespaces', ->
-      before (done) ->
-        req =
-          user_id: '  '
-          token:
-            use: 'pwless-signin'
-
-        res = render: sinon.spy (vw, vw_info) ->
-          view = vw
-          view_info = view_info
-          done()
-
-        next = sinon.spy (error) ->
-          err = error
-          done()
-
-        passwordless.verifyToken req, res, next
-
-      it 'should not continue', ->
-        next.should.not.have.been.called
-
-      it 'should render view with error', ->
-        res.render.should.have.been.
-          calledWith 'passwordless/pwlessSigninLinkError',
-          sinon.match({
-            error: sinon.match.string
-            })
-
-    describe 'error on DB call', ->
-      before (done) ->
-        req =
-          user_id: 'test-user-id'
-          token:
-            use: 'pwless-signin'
-
-        sinon.stub(User, 'patch').callsArgWith(2, new Error('database problem'))
-
-        res = render: sinon.spy (vw, vw_info) ->
-          view = vw
-          view_info = view_info
-          done()
-
-        next = sinon.spy (error) ->
-          err = error
-          done()
-
-        passwordless.verifyToken req, res, next
+        passwordless.verifyNewUserSigninToken req, res, next
 
       after ->
-        User.patch.restore()
+        User.insert.restore()
 
-      it 'should continue', ->
-        next.should.have.been.called
-
-      # Perhaps it would be better to render a more helpful message, but this is consistent with verifyEmail
-      it 'should provide an error', ->
-        next.should.have.been.calledWith sinon.match.instanceOf(Error)
-
-    describe 'with an unknown user ', ->
-      before (done) ->
-        req =
-          user_id: 'test-user-id'
-          token:
-            use: 'pwless-signin'
-
-        sinon.stub(User, 'patch').callsArgWith(2, null, null)
-
-        res = render: sinon.spy (vw, vw_info) ->
-          view = vw
-          view_info = view_info
-          done()
-
-        next = sinon.spy (error) ->
-          err = error
-          done()
-
-        passwordless.verifyToken req, res, next
-
-      after ->
-        User.patch.restore()
-
-      it 'should NOT continue', ->
+      it 'should not continue', ->
         next.should.not.have.been.called
 
       it 'should render view with error', ->
         res.render.should.have.been.
-          calledWith 'passwordless/pwlessSigninLinkError',
+          calledWith 'passwordless/pwlessSignup',
           sinon.match({
             error: sinon.match.string
+            token: sinon.match.string
+            email: sinon.match.string
             })
 
-    describe 'for known user', ->
+
+
+    describe 'User insertion works', ->
       user = new User _id: 'uuid-test'
       before (done) ->
         req =
@@ -246,10 +169,10 @@ describe 'Passwordless middleware tests', ->
             amr: 'test-amr'
           user_id: 'test-user-id'
           token:
-            use: 'pwless-signin'
+            use: 'pwless-new-user'
           session: {}
 
-        sinon.stub(User, 'patch').callsArgWith(2, null, user)
+        sinon.stub(User, 'insert').callsArgWith(2, null, user);
 
         res = render: sinon.spy (vw, vw_info) ->
           view = vw
@@ -260,10 +183,10 @@ describe 'Passwordless middleware tests', ->
           err = error
           done()
 
-        passwordless.verifyToken req, res, next
+        passwordless.verifyNewUserSigninToken req, res, next
 
       after ->
-        User.patch.restore()
+        User.insert.restore()
 
       it 'should continue', ->
         next.should.have.been.called
@@ -271,7 +194,7 @@ describe 'Passwordless middleware tests', ->
       it 'should not have an error', ->
         expect(err).to.be.undefined
 
-      it 'req.user should be the user returned from DB call', ->
+      it 'req.user should be the user returned from User.insert call', ->
         req.user.should.equal(user)
 
       it 'req.session should have the user_id', ->

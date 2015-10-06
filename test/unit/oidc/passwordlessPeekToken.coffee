@@ -28,7 +28,7 @@ describe 'Passwordless middleware tests', ->
   tsSettings = {}
 
 
-  describe 'consume link token', ->
+  describe 'peek link token', ->
 
     before ->
       tsSettings = new TestSettings(settings)
@@ -45,9 +45,11 @@ describe 'Passwordless middleware tests', ->
         req =
           query: {}
 
+        req.connectParams = req.query
+
         next = sinon.spy()
 
-        passwordless.consumeToken req, res, next
+        passwordless.peekToken req, res, next
 
       it 'should continue', ->
         next.should.have.been.called
@@ -55,26 +57,27 @@ describe 'Passwordless middleware tests', ->
       it 'should provide an invalid request error', ->
         next.should.have.been.calledWith sinon.match.instanceOf(InvalidRequestError)
 
-    describe 'valid token after stub OneTimeToken#consume call', ->
+    describe 'valid token after stub OneTimeToken#peek call', ->
       {err} = {}
       {token} = {}
 
       before (done) ->
         req =
-          query:
+          body:
             token: 'the-passwordless-token'
+        req.connectParams = req.body
 
         next = sinon.spy (error) ->
           err = error
           done()
 
         token = {test: 'foo'}
-        sinon.stub(OneTimeToken, 'consume').callsArgWith(1, null, token)
+        sinon.stub(OneTimeToken, 'peek').callsArgWith(1, null, token)
 
-        passwordless.consumeToken req, res, next
+        passwordless.peekToken req, res, next
 
       after ->
-        OneTimeToken.consume.restore()
+        OneTimeToken.peek.restore()
 
       it 'should continue', ->
         next.should.have.been.called
@@ -85,24 +88,25 @@ describe 'Passwordless middleware tests', ->
       it 'should set token on the request', ->
         req.token.should.equal token
 
-    describe 'token not found case in OneTimeToken#consume not found case results in next with no errors and req.token = null', ->
+    describe 'token not found case in OneTimeToken#peek not found case results in next with no errors and req.token = null', ->
       {err} = {}
 
       before (done) ->
         req =
-          query:
+          body:
             token: 'the-passwordless-token'
+        req.connectParams = req.body
 
         next = sinon.spy (error) ->
           err = error
           done()
 
-        sinon.stub(OneTimeToken, 'consume').callsArgWith(1, null, null)
+        sinon.stub(OneTimeToken, 'peek').callsArgWith(1, null, null)
 
-        passwordless.consumeToken req, res, next
+        passwordless.peekToken req, res, next
 
       after ->
-        OneTimeToken.consume.restore()
+        OneTimeToken.peek.restore()
 
       it 'should continue', ->
         next.should.have.been.called
@@ -113,24 +117,25 @@ describe 'Passwordless middleware tests', ->
       it 'should have null token on the request', ->
         expect(req.token).to.be.null
 
-    describe 'OneTimeToken#consume returns err reports error in next(err) call', ->
+    describe 'OneTimeToken#peek returns err reports error in next(err) call', ->
       {err} = {}
 
       before (done) ->
         req =
-          query:
+          body:
             token: 'the-passwordless-token'
+        req.connectParams = req.body
 
         next = sinon.spy (error) ->
           err = error
           done()
 
-        sinon.stub(OneTimeToken, 'consume').callsArgWith(1, new Error("fake A redis DB unit test error"), null)
+        sinon.stub(OneTimeToken, 'peek').callsArgWith(1, new Error("fake A redis DB unit test error"), null)
 
-        passwordless.consumeToken req, res, next
+        passwordless.peekToken req, res, next
 
       after ->
-        OneTimeToken.consume.restore()
+        OneTimeToken.peek.restore()
 
       it 'should continue', ->
         next.should.have.been.called

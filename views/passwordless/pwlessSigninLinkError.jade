@@ -15,7 +15,5 @@ html(lang="en")
         if error
           .error= error
         else
+          //- this case should never happen for passwordless..
           div Your e-mail link has now been verified!
-          if signin
-            div You may now continue to sign in to #{signin.client.client_name}.
-              a.button(href=signin.url) Continue to sign in

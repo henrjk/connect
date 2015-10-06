@@ -16,7 +16,7 @@ passwordless = passwordless.middleware
 settings = require '../../../boot/settings'
 TestSettings = require '../../lib/testSettings'
 
-User = require '../../../models/User'
+OneTimeToken = require '../../../models/OneTimeToken'
 
 
 describe 'Passwordless middleware tests', ->
@@ -27,7 +27,7 @@ describe 'Passwordless middleware tests', ->
   tsSettings = {}
 
 
-  describe 'verify sign-in token', ->
+  describe 'verify sign-up token', ->
 
     {view, view_info} = {}
 
@@ -55,7 +55,7 @@ describe 'Passwordless middleware tests', ->
           err = error
           done()
 
-        passwordless.verifyToken req, res, next
+        passwordless.verifySignupToken req, res, next
 
       it 'should not continue', ->
         next.should.not.have.been.called
@@ -80,7 +80,7 @@ describe 'Passwordless middleware tests', ->
           err = error
           done()
 
-        passwordless.verifyToken req, res, next
+        passwordless.verifySignupToken req, res, next
 
       it 'should not continue', ->
         next.should.not.have.been.called
@@ -92,7 +92,7 @@ describe 'Passwordless middleware tests', ->
             error: sinon.match.string
             })
 
-    describe 'req.token.use is not pwless-signin', ->
+    describe 'req.token.use is not pwless-signup', ->
       before (done) ->
         req =
           token:
@@ -107,7 +107,7 @@ describe 'Passwordless middleware tests', ->
           err = error
           done()
 
-        passwordless.verifyToken req, res, next
+        passwordless.verifySignupToken req, res, next
 
       it 'should not continue', ->
         next.should.not.have.been.called
@@ -120,11 +120,13 @@ describe 'Passwordless middleware tests', ->
             })
 
 
-    describe 'req.user_id is undefined', ->
+    describe 'error on DB call to issue new Token', ->
       before (done) ->
         req =
           token:
-            use: 'pwless-signin'
+            use: 'pwless-signup'
+
+        sinon.stub(OneTimeToken, 'issue').callsArgWith(1, new Error('database problem'))
 
         res = render: sinon.spy (vw, vw_info) ->
           view = vw
@@ -135,68 +137,10 @@ describe 'Passwordless middleware tests', ->
           err = error
           done()
 
-        passwordless.verifyToken req, res, next
-
-      it 'should not continue', ->
-        next.should.not.have.been.called
-
-      it 'should render view with error', ->
-        res.render.should.have.been.
-          calledWith 'passwordless/pwlessSigninLinkError',
-          sinon.match({
-            error: sinon.match.string
-            })
-
-    describe 'req.user_id is only whitespaces', ->
-      before (done) ->
-        req =
-          user_id: '  '
-          token:
-            use: 'pwless-signin'
-
-        res = render: sinon.spy (vw, vw_info) ->
-          view = vw
-          view_info = view_info
-          done()
-
-        next = sinon.spy (error) ->
-          err = error
-          done()
-
-        passwordless.verifyToken req, res, next
-
-      it 'should not continue', ->
-        next.should.not.have.been.called
-
-      it 'should render view with error', ->
-        res.render.should.have.been.
-          calledWith 'passwordless/pwlessSigninLinkError',
-          sinon.match({
-            error: sinon.match.string
-            })
-
-    describe 'error on DB call', ->
-      before (done) ->
-        req =
-          user_id: 'test-user-id'
-          token:
-            use: 'pwless-signin'
-
-        sinon.stub(User, 'patch').callsArgWith(2, new Error('database problem'))
-
-        res = render: sinon.spy (vw, vw_info) ->
-          view = vw
-          view_info = view_info
-          done()
-
-        next = sinon.spy (error) ->
-          err = error
-          done()
-
-        passwordless.verifyToken req, res, next
+        passwordless.verifySignupToken req, res, next
 
       after ->
-        User.patch.restore()
+        OneTimeToken.issue.restore()
 
       it 'should continue', ->
         next.should.have.been.called
@@ -205,14 +149,16 @@ describe 'Passwordless middleware tests', ->
       it 'should provide an error', ->
         next.should.have.been.calledWith sinon.match.instanceOf(Error)
 
-    describe 'with an unknown user ', ->
+    describe 'successful with a new signup token ', ->
       before (done) ->
         req =
           user_id: 'test-user-id'
           token:
-            use: 'pwless-signin'
+            use: 'pwless-signup'
+            sub:
+              email: 'test@test.org'
 
-        sinon.stub(User, 'patch').callsArgWith(2, null, null)
+        sinon.stub(OneTimeToken, 'issue').callsArgWith(1, null, new OneTimeToken {} )
 
         res = render: sinon.spy (vw, vw_info) ->
           view = vw
@@ -223,62 +169,18 @@ describe 'Passwordless middleware tests', ->
           err = error
           done()
 
-        passwordless.verifyToken req, res, next
+        passwordless.verifySignupToken req, res, next
 
       after ->
-        User.patch.restore()
+        OneTimeToken.issue.restore()
 
       it 'should NOT continue', ->
         next.should.not.have.been.called
 
-      it 'should render view with error', ->
+      it 'should render view with email and token', ->
         res.render.should.have.been.
-          calledWith 'passwordless/pwlessSigninLinkError',
+          calledWith 'passwordless/pwlessSignup',
           sinon.match({
-            error: sinon.match.string
+            email: sinon.match.string,
+            token: sinon.match.string
             })
-
-    describe 'for known user', ->
-      user = new User _id: 'uuid-test'
-      before (done) ->
-        req =
-          provider:
-            amr: 'test-amr'
-          user_id: 'test-user-id'
-          token:
-            use: 'pwless-signin'
-          session: {}
-
-        sinon.stub(User, 'patch').callsArgWith(2, null, user)
-
-        res = render: sinon.spy (vw, vw_info) ->
-          view = vw
-          view_info = view_info
-          done()
-
-        next = sinon.spy (error) ->
-          err = error
-          done()
-
-        passwordless.verifyToken req, res, next
-
-      after ->
-        User.patch.restore()
-
-      it 'should continue', ->
-        next.should.have.been.called
-
-      it 'should not have an error', ->
-        expect(err).to.be.undefined
-
-      it 'req.user should be the user returned from DB call', ->
-        req.user.should.equal(user)
-
-      it 'req.session should have the user_id', ->
-        req.session.user.should.equal('uuid-test')
-
-      it 'req.session.amr should match the test seup', ->
-        req.session.amr.should.have.members(['test-amr'])
-
-      it 'req.session.opbs exists (it should contain a random value)', ->
-        req.session.opbs.should.exist
