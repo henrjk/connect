@@ -8,7 +8,8 @@ chai.use sinonChai
 chai.should()
 
 
-{passwordless} = require '../../../oidc'
+passwordless = require '../../../routes/passwordless'
+passwordless = passwordless.middleware
 
 settings = require '../../../boot/settings'
 TestSettings = require '../../lib/testSettings'

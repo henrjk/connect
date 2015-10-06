@@ -23,7 +23,6 @@ var oidc = {
   error: require('./error'),
   getBearerToken: require('./getBearerToken'),
   parseAuthorizationHeader: require('./parseAuthorizationHeader'),
-  passwordless: require('../routes/passwordless').oidc,
   promptToAuthorize: require('./promptToAuthorize'),
   requireVerifiedEmail: require('./requireVerifiedEmail'),
   requireSignin: require('./requireSignin'),

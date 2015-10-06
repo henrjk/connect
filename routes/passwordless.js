@@ -232,7 +232,7 @@ function issueToken (req, tokenOptions, cb) {
     sub: subObject
   }
   theTokenOptions = _.merge(theTokenOptions, tokenOptions)
-  OneTimeToken.issue(tokenOptions, function (err, token) {
+  OneTimeToken.issue(theTokenOptions, function (err, token) {
     cb(err, token, theTokenOptions)
   })
 }
@@ -398,7 +398,7 @@ function routes (server) {
 module.exports = {
   routes: routes,
   signin: postSigninMiddleware,
-  oidc: {
+  middleware: {
     verifyEnabled: verifyPasswordlessEnabled,
     peekToken: peekToken,
     consumeToken: consumeToken,
