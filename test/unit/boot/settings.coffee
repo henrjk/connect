@@ -29,13 +29,17 @@ describe 'Test on settings', ->
         sinon.stub fs, 'readFileSync', (file, options)->
           if file == config
             return JSON.stringify({
-                issuer: 'http://localhost:3000',
+                issuer: 'http://localhost:3000'
+                cookie_secret: 'cs123'
+                session_secret: 'ss456'
               })
           else
             origReadFileSync.call(fs, file, options)
 
         proxyquire.noPreserveCache()
-        configLoad = proxyquire(config, {})
+        try
+          configLoad = proxyquire(config, {})
+
         settings = proxyquire('../../../boot/settings', {})
 
       after ->
@@ -46,9 +50,11 @@ describe 'Test on settings', ->
       it 'settings.providers is not undefined', ->
         expect(settings.providers).to.not.be.undefined
 
-      # cookie_secret and session_secret could also be defined but we should adjust this test if that changes.
-      it 'settings.cookie_secret is undefined', ->
-        expect(settings.cookie_secret).to.be.undefined
+      it 'settings.issuer equals http://localhost:3000', ->
+        settings.issuer.should.equal 'http://localhost:3000'
 
-      it 'settings.session_secret is undefined', ->
-        expect(settings.cookie_secret).to.be.undefined
+      it 'settings.cookie_secret is a string', ->
+        settings.cookie_secret.should.be.a 'string'
+
+      it 'settings.session_secret is not undefined', ->
+        settings.session_secret.should.be.a 'string'
