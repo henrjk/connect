@@ -84,15 +84,10 @@ function extractTokenSub (req, res, next) {
   if (!token.sub) {
     return next()
   }
-  var subObject
-  try {
-    subObject = JSON.parse(token.sub)
-  } catch (err) {
-    return next(err)
-  }
-  req.connectParams = _.pick(subObject, CONNECT_SUB_FIELDS)
-  if (subObject.user) {
-    req.user_id = subObject.user
+  req.connectParams = req.connectParams || {}
+  _.assign(req.connectParams, _.pick(token.sub, CONNECT_SUB_FIELDS))
+  if (token.sub) {
+    req.user_id = token.sub.user
   }
   next()
 }
@@ -166,7 +161,7 @@ function verifyPasswordlessSignupToken (req, res, next) {
       return next(err)
     }
     res.render('passwordless/pwlessSignup', {
-      email: tokenOptions.sub.email,
+      'email': tokenOptions.sub.email,
       token: token._id
     })
   })

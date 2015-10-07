@@ -29,7 +29,7 @@ TestSettings = require '../../lib/testSettings'
 
 request = supertest(server)
 
-describe 'Passwordless signin link activation', ->
+describe 'Passwordless signup form submission', ->
 
   settings = require '../../../boot/settings'
 
@@ -42,28 +42,22 @@ describe 'Passwordless signin link activation', ->
     tsSettings.addSettings
       issuer: 'https://test.issuer.com'
       providers:
-        passwordless:
-          "tokenTTL-foo": 600
-
-    # If redis is not running req.session remains undefined
-    # causing an error in oidc/setSessionAmr.js which ultimately
-    # result in a internal server error by oidc/error.js
-    http.IncomingMessage.prototype.session = {}
+        passwordless: {}
 
   after ->
-    delete http.IncomingMessage.prototype.session
     tsSettings.restore()
 
   {err, res} = {}
 
 
-  describe 'success flow existing user sign-IN', ->
+  describe 'successful form submission creating user and sign-in', ->
 
     session = {}
 
     tokenOptions =
+      _id: 'token-id-random-stuff'
       exp: Math.round(Date.now() / 1000) + 3600
-      use: 'pwless-signin'
+      use: 'pwless-new-user'
       sub:
         email: 'peter@mary.com'
         client_id: '4a2c1a31-150d-49e3-9946-2909220cdb16'
@@ -71,10 +65,9 @@ describe 'Passwordless signin link activation', ->
         response_type: 'id_token token'
         scope: 'openid profile'
         nonce: 'KG4vsD0bfAjbEdCMurmiPxzEcpFGoguYGR7b3cj3AMs'
-        user: 'peters-user-uuid'
 
     client =
-      client_name: 'unit test pwless_signin'
+      client_name: 'unit test pwless'
       _id: '4a2c1a31-150d-49e3-9946-2909220cdb16'
       redirect_uris: [
         'http://localhost:9000/callback_popup.html'
@@ -82,6 +75,11 @@ describe 'Passwordless signin link activation', ->
       trusted: true
       response_types: ['id_token token']
       grant_types: ['implicit']
+
+    body =
+      token: tokenOptions._id
+      givenName: 'Peter'
+      familyName: 'Mary'
 
     {scope,scopes} = {}
 
@@ -92,14 +90,16 @@ describe 'Passwordless signin link activation', ->
       # result in a internal server error by oidc/error.js
       http.IncomingMessage.prototype.session = session
 
-      sinon.stub(OneTimeToken, 'consume')
+      sinon.stub(OneTimeToken, 'peek')
         .callsArgWith(1, null, new OneTimeToken tokenOptions)
 
       sinon.stub(Client, 'get').callsArgWith(2, null, client)
 
-      user = new User _id: tokenOptions.sub.user
+      user = new User body
 
-      sinon.stub(User, 'patch').callsArgWith(2, null, user)
+      sinon.stub(User, 'insert').callsArgWith(2, null, user)
+
+      sinon.spy(OneTimeToken, 'revoke')
 
       scope  = 'openid profile developer'
       scopes = [
@@ -112,16 +112,12 @@ describe 'Passwordless signin link activation', ->
       response = AccessToken.initialize().project('issue')
       sinon.stub(AccessToken, 'issue').callsArgWith(1, null, response)
       sinon.spy(IDToken.prototype, 'initializePayload')
-
       sinon.spy(express.response, 'redirect')
 
-      query =
-        token: 'token-id-random-stuff'
-
       request
-        .get('/signin/passwordless')
+        .post('/signup/passwordless')
         .redirects(0)
-        .query(query)
+        .send(body)
         .end (error, response) ->
           err = error
           res = response
@@ -132,13 +128,23 @@ describe 'Passwordless signin link activation', ->
       AccessToken.issue.restore()
       IDToken.prototype.initializePayload.restore()
       Scope.determine.restore()
-      User.patch.restore()
-      OneTimeToken.consume.restore()
+      OneTimeToken.revoke.restore()
+      User.insert.restore()
       Client.get.restore()
+      OneTimeToken.peek.restore()
       delete http.IncomingMessage.prototype.session
 
-    it 'should consume token with the id taken of the link query', ->
-      OneTimeToken.consume.should.have.been.calledWith 'token-id-random-stuff'
+    it 'should peek token with the id taken of the form submission body token id', ->
+      OneTimeToken.peek.should.have.been.calledWith 'token-id-random-stuff'
+
+    it 'should revoke token', ->
+      OneTimeToken.revoke.should.have.been.calledWith 'token-id-random-stuff'
+
+    it 'User insert should have been called with form submission body', ->
+      User.insert.should.have.been.calledWith sinon.match {
+        givenName: 'Peter'
+        familyName: 'Mary'
+      }
 
     it 'should respond with an http redirect', ->
       res.statusCode.should.equal 302
