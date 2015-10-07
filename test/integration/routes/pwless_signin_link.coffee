@@ -58,7 +58,7 @@ describe 'Passwordless signin link activation', ->
     tokenOptions =
       exp: Math.round(Date.now() / 1000) + 3600
       use: 'pwless-signin'
-      sub: JSON.stringify
+      sub:
         email: 'peter@mary.com'
         client_id: '4a2c1a31-150d-49e3-9946-2909220cdb16'
         redirect_uri: 'http://localhost:9000/callback_popup.html'

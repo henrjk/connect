@@ -94,28 +94,7 @@ describe 'Passwordless middleware tests', ->
       it 'req.token should remain unchanged', ->
         req.token.should.equal(token)
 
-    describe 'req.token has invalid JSON in sub ', ->
-      token = {sub: '(3.14)'}
-      before (done) ->
-        req =
-          token: token
-
-        next = sinon.spy (error) ->
-          err = error
-          done()
-
-        passwordless.extractTokenSub req, res, next
-
-      it 'should continue', ->
-        next.should.have.been.called
-
-      it 'should provide an error', ->
-        next.should.have.been.calledWith sinon.match.instanceOf(Error)
-
-      it 'req.token should remain unchanged', ->
-        req.token.should.equal(token)
-
-    describe 'req.token has valid JSON in sub ', ->
+    describe 'req.token with sub ', ->
       token = {sub: '3.14'}
       before (done) ->
         req =
@@ -136,7 +115,7 @@ describe 'Passwordless middleware tests', ->
       it 'req.connectParams should not be undefined', ->
         req.connectParams.should.not.be.undefined
 
-    describe 'req.token has JSON with expected connectParams and more in sub ', ->
+    describe 'req.token has expected connectParams and more in sub ', ->
       sub =
         email: 'test@test.org'
         redirect_uri: 'https://test.org/callback'
@@ -146,7 +125,7 @@ describe 'Passwordless middleware tests', ->
         nonce: 'test-nonce'
         unexpected: 'test-unexpected'
 
-      token = {sub: JSON.stringify(sub)}
+      token = {sub: sub}
 
       before (done) ->
         req =
@@ -185,14 +164,14 @@ describe 'Passwordless middleware tests', ->
       it 'req.connectParams to not have property unexpected', ->
         expect(req.connectParams.unexpected).to.be.undefined
 
-    describe 'req.token has JSON with only some of the expected connectParams', ->
+    describe 'req.token has sub with only some of the expected connectParams', ->
       sub =
         email: 'test@test.org'
         redirect_uri: 'https://test.org/callback'
         client_id: 'test-client-id'
         response_type: 'test-response-type'
 
-      token = {sub: JSON.stringify(sub)}
+      token = {sub: sub}
 
       before (done) ->
         req =
@@ -225,11 +204,11 @@ describe 'Passwordless middleware tests', ->
       it 'req.connectParams to NOT have property nonce', ->
         expect(req.connectParams.nonce).to.be.undefined
 
-    describe 'req.token has JSON with sub user', ->
+    describe 'req.token has sub user', ->
       sub =
         user: 'test-user-id'
 
-      token = {sub: JSON.stringify(sub)}
+      token = {sub: sub}
 
       before (done) ->
         req =

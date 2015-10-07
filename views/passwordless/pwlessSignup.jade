@@ -15,7 +15,9 @@ html(lang="en")
         p= error
         input(type='hidden', name='token', value=token)
         hr.textsep.signup
-        p Create an account for email = email within one day.
+        p
+          | Create a new account for email #{email}. 
+          | This form must be submitted within one day.
         input(type='text', name='givenName', placeholder='First Name')
         input(type='text', name='familyName', placeholder='Last Name')
         input.callout.full(type='submit', value='Sign up')
