@@ -64,7 +64,7 @@ describe 'Passwordless middleware tests', ->
         res.render.should.have.been.
           calledWith 'signin',
           sinon.match({
-            error: sinon.match.string
+            formError: sinon.match.string
             })
 
     describe 'req.connectParams.email is something', ->

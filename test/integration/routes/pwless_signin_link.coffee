@@ -166,3 +166,8 @@ describe 'Passwordless signin link activation', ->
       IDToken.prototype.initializePayload.should.have.been.calledWith(
         sinon.match amr: session.amr
       )
+
+    it 'should include `amr` claim `email` in id_token', ->
+      IDToken.prototype.initializePayload.should.have.been.calledWith(
+        sinon.match amr: ['email']
+      )
