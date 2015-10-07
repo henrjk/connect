@@ -17,6 +17,7 @@ settings = require '../../../boot/settings'
 TestSettings = require '../../lib/testSettings'
 
 User = require '../../../models/User'
+OneTimeToken = require '../../../models/OneTimeToken'
 
 
 describe 'Passwordless middleware tests', ->
@@ -174,6 +175,8 @@ describe 'Passwordless middleware tests', ->
 
         sinon.stub(User, 'insert').callsArgWith(2, null, user);
 
+        sinon.stub(OneTimeToken, 'revoke').callsArgWith(1, null);
+
         res = render: sinon.spy (vw, vw_info) ->
           view = vw
           view_info = view_info
@@ -186,6 +189,7 @@ describe 'Passwordless middleware tests', ->
         passwordless.verifyNewUserSigninToken req, res, next
 
       after ->
+        OneTimeToken.revoke.restore()
         User.insert.restore()
 
       it 'should continue', ->

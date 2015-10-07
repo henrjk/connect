@@ -99,7 +99,7 @@ describe 'Passwordless signup form submission', ->
 
       sinon.stub(User, 'insert').callsArgWith(2, null, user)
 
-      sinon.spy(OneTimeToken, 'revoke')
+      sinon.stub(OneTimeToken, 'revoke').callsArgWith(1, null)
 
       scope  = 'openid profile developer'
       scopes = [
