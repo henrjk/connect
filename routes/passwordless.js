@@ -84,7 +84,8 @@ function extractTokenSub (req, res, next) {
   if (!token.sub) {
     return next()
   }
-  req.connectParams = _.pick(token.sub, CONNECT_SUB_FIELDS)
+  req.connectParams = req.connectParams || {}
+  _.assign(req.connectParams, _.pick(token.sub, CONNECT_SUB_FIELDS))
   if (token.sub) {
     req.user_id = token.sub.user
   }
