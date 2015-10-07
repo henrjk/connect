@@ -28,22 +28,22 @@ var PasswordlessDisabledError = require('../errors/PasswordlessDisabledError')
  *    after 15 minutes by default.
  * 4.1 If user account exists email tells user to click and confirm
  *     that they want to sign in.
- *     Link to route /signin/pwless/...
+ *     Link to route /signin/passwordless
  * 4.2 If new user email tells user to click the link if that want
  *     to create a new user account.
- *     Link to route /signup/pwless/...
+ *     Link to route /signup/passwordless
  *
- * New user passwordless signup flow:  (/signup/pwless)
+ * New user passwordless signup flow:  (/signup/passwordless)
  *
- * 1. Verify token exists and is for pwless.
+ * 1. Verify token exists and is for passwordless signup.
  * 2. Direct user to new passwordless user view, where user can enter additional details such as last name, first name.
  * 3. Create user based on form information, revoke token.
  * 4. Send welcome mail.
  * 5. Authorize user
  *
- * Existing user passwordless sigin flow:  (/signin/pwless)
+ * Existing user passwordless sigin flow:  (/signin/passwordless)
  *
- * 1. Verify token exists and is for pwless.
+ * 1. Verify token exists and is for passwordless signin.
  * 2. Update user email verified status with current time.
  * 3. Authorize user.
  */
@@ -203,11 +203,12 @@ function verifyPasswordlessNewUserSigninToken (req, res, next) {
         email: token.sub.email
       })
     }
-    OneTimeToken.revoke(token._id)
-    // don't care if token revocation fails as they expire anyhow.
-    req.user = user
-    authenticator.login(req, user)
-    next()
+    OneTimeToken.revoke(token._id, function () {
+      // don't care if token revocation fails as they expire anyhow.
+      req.user = user
+      authenticator.login(req, user)
+      next()
+    })
   })
 }
 
@@ -256,21 +257,21 @@ function sendMail (req, res, next) {
       var email = tokenOptions.sub.email
 
       var verifyURL = url.parse(settings.issuer)
-      verifyURL.pathname = user ? 'signin/pwless' : 'signup/pwless'
+      verifyURL.pathname = user ? 'signin/passwordless' : 'signup/passwordless'
       verifyURL.query = { token: token._id }
+
+      var mailOptions = {
+        email: email,
+        verifyURL: url.format(verifyURL),
+        providerName: req.client.client_name
+      }
 
       var template = user ? 'passwordlessSignin' : 'passwordlessSignup'
       var subject = user
-        ? 'Sign in to ' + req.client.client_name
-        : 'Create your account on ' + req.client.client_name
+        ? 'Sign in to ' + mailOptions.providerName
+        : 'Create your account on ' + mailOptions.providerName
 
-      // TODO: test is {{providerName}} available in template?
-      // TODO: see also usage of #{signin.client.client_name} in verifyEmail.jade, oidc.verifyClient
-
-      mailer.sendMail(template, {
-        email: email,
-        verifyURL: url.format(verifyURL)
-      }, {
+      mailer.sendMail(template, mailOptions, {
         to: email,
         subject: subject
       }, function (err, responseStatus) {
@@ -336,7 +337,7 @@ function postSigninMiddleware () {
   return passwordlessSignin
 }
 
-// signin/pwless, signup/pwless,
+// routes for provider=passwordless
 function routes (server) {
   server.get('/resend/:provider',
     oidc.selectConnectParams,
