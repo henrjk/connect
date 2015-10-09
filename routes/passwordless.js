@@ -5,7 +5,6 @@
 var express = require('express')
 var _ = require('lodash')
 var url = require('url')
-var qs = require('qs')
 
 var settings = require('../boot/settings')
 var mailer = require('../boot/mailer')
