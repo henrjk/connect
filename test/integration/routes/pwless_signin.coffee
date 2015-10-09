@@ -148,8 +148,23 @@ describe 'Passwordless signin post', ->
       it 'should respond with html page containing the sender', ->
         res.text.should.contain 'from@example.com'
 
-      it 'should respond with html page containing the resend link', ->
+      it 'should respond with html page containing a resend link', ->
         res.text.should.match (new RegExp("href=\"https://test.issuer.com/resend/passwordless\\?email=user%40test\\.com&amp;", "g"))
+
+      it 'resend link should contain redirect_uri', ->
+        res.text.should.match (new RegExp("href=\"https://test.issuer.com/resend/passwordless\\?.*redirect_uri=", "g"))
+
+      it 'resend link should contain client_id', ->
+        res.text.should.match (new RegExp("href=\"https://test.issuer.com/resend/passwordless\\?.*client_id=", "g"))
+
+      it 'resend link should contain response_type', ->
+        res.text.should.match (new RegExp("href=\"https://test.issuer.com/resend/passwordless\\?.*response_type=", "g"))
+
+      it 'resend link should contain scope', ->
+        res.text.should.match (new RegExp("href=\"https://test.issuer.com/resend/passwordless\\?.*scope=", "g"))
+
+      it 'resend link should contain nonce', ->
+        res.text.should.match (new RegExp("href=\"https://test.issuer.com/resend/passwordless\\?.*nonce=", "g"))
 
     describe 'success flow existing user', ->
 
@@ -248,5 +263,20 @@ describe 'Passwordless signin post', ->
       it 'should respond with html page containing the sender', ->
         res.text.should.contain 'from@example.com'
 
-      it 'should respond with html page containing the resend link', ->
+      it 'should respond with html page containing a resend link', ->
         res.text.should.match (new RegExp("href=\"https://test.issuer.com/resend/passwordless\\?email=doe%40test\\.com&amp;", "g"))
+
+      it 'resend link should contain redirect_uri', ->
+        res.text.should.match (new RegExp("href=\"https://test.issuer.com/resend/passwordless\\?.*redirect_uri=", "g"))
+
+      it 'resend link should contain client_id', ->
+        res.text.should.match (new RegExp("href=\"https://test.issuer.com/resend/passwordless\\?.*client_id=", "g"))
+
+      it 'resend link should contain response_type', ->
+        res.text.should.match (new RegExp("href=\"https://test.issuer.com/resend/passwordless\\?.*response_type=", "g"))
+
+      it 'resend link should contain scope', ->
+        res.text.should.match (new RegExp("href=\"https://test.issuer.com/resend/passwordless\\?.*scope=", "g"))
+
+      it 'resend link should contain nonce', ->
+        res.text.should.match (new RegExp("href=\"https://test.issuer.com/resend/passwordless\\?.*nonce=", "g"))

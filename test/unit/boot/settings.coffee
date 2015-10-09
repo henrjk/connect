@@ -56,5 +56,5 @@ describe 'Test on settings', ->
       it 'settings.cookie_secret is a string', ->
         settings.cookie_secret.should.be.a 'string'
 
-      it 'settings.session_secret is not undefined', ->
+      it 'settings.session_secret is a string', ->
         settings.session_secret.should.be.a 'string'
