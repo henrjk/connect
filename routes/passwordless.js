@@ -46,7 +46,7 @@ var PasswordlessDisabledError = require('../errors/PasswordlessDisabledError')
  * 1. Verify token exists and is for passwordless signin.
  * 2. Update user email verified status with current time.
  * 3. Authorize user.
- */
+*/
 
 var TOKEN_USAGE_SIGNIN = 'pwless-signin'
 var TOKEN_USAGE_SIGNUP = 'pwless-signup'
@@ -195,7 +195,15 @@ function verifyPasswordlessNewUserSigninToken (req, res, next) {
     password: false
   }
 
-  User.insert(req.connectParams, userOptions, function (err, user) {
+  var userData = {
+    dateEmailVerified: Date.now(),
+    emailVerified: true
+  }
+
+  _.assign(userData, req.connectParams)
+
+
+  User.insert(userData, userOptions, function (err, user) {
     if (err) {
       return res.render(view, {
         error: err,
