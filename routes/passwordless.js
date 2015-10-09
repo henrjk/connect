@@ -18,37 +18,76 @@ var PasswordlessDisabledError = require('../errors/PasswordlessDisabledError')
 var renderSignin = require('../render/renderSignin')
 
 /**
- * Passwordless
- *
- * Both new and existing users start at the signin page
- *
- * Common flow to signin or signup, starting at /signin :
+Passwordless
 
- * 1. User provides email
- * 2. Validate input as valid email, display error if not.
- * 3. Check whether user account exists.
- * 4. Send link in either case with a one time token expiring
- *    after 15 minutes by default.
- * 4.1 If user account exists email tells user to click and confirm
- *     that they want to sign in.
- *     Link to route /signin/passwordless
- * 4.2 If new user email tells user to click the link if that want
- *     to create a new user account.
- *     Link to route /signup/passwordless
- *
- * New user passwordless signup flow:  (/signup/passwordless)
- *
- * 1. Verify token exists and is for passwordless signup.
- * 2. Direct user to new passwordless user view, where user can enter additional details such as last name, first name.
- * 3. Create user based on form information, revoke token.
- * 4. Send welcome mail.
- * 5. Authorize user
- *
- * Existing user passwordless sigin flow:  (/signin/passwordless)
- *
- * 1. Verify token exists and is for passwordless signin.
- * 2. Update user email verified status with current time.
- * 3. Authorize user.
+FLOW: Sign in and signup
+
+POST route: /sigin
+  In passwordless sign up starts exactly like sign in.
+  There is a common flow to signin or signup, starting at /signin :
+
+  1. User selects 'Sign in or sign up with your email' method, provides email
+     and submits.
+
+  2. Standard post /signin middleware is performed, such as
+     verifyClient, validateAuthorizationParams an more.
+
+  3. Passwordless configuration validations are done:
+     verifyPasswordlessEnabled
+     verifyMailerConfigured
+
+  4. The input email is validated syntactically and errors are rendered
+     to the sign in page.
+
+  5. Check whether there is a user account for that email.
+     Send link in either case with an id of a one time token
+     expiring after 15 minutes by default.
+     The token also captures parameters such as the email,
+     redirect_uri, client_id, response_type, scope, nonce.
+
+  5.1.A. Existing user:
+     If user account exists email tells user to click and confirm
+     that they want to sign in.
+     Link to route /signin/passwordless?token=<token-id>
+  5.1.B. New user:
+    If new user email tells user to click the link if that want
+    to create a new user account.
+    Link to route /signup/passwordless?token=<token-id>
+
+  5.2 Show page telling user to check their mail and that
+   a link has been send. This page also allows to resend the email.
+
+FLOW: New user sign up flow:
+
+GET route: /signup/passwordless
+  1. Verify token exists and is for passwordless signup.
+  2. verifyClient, validateAuthorizationParams,
+  3. verifyPasswordlessEnabled
+  4. Issue a new token for subsequent account creation when form is
+     submitted. This token has a longer expiration (1 day default).
+  5. Renders signup form 'passwordless/pwlessSignup' for user to enter
+     given_name and family_name.
+
+POST route:
+  1. Verify token exists and is for passwordless create new account.
+  2. verifyClient, validateAuthorizationParams,
+  3. verifyPasswordlessEnabled
+  4. Create new user based on form data and email.
+  5. Revoke token.
+  [ Not done : Send welcome mail]
+  6. login user
+  7. Authorize user
+
+FLOW: Existing user sign in flow:
+
+GET route: /signin/passwordless
+  1. Verify token exists and is for passwordless signup.
+  2. verifyClient, validateAuthorizationParams,
+  3. verifyPasswordlessEnabled
+  4. update users verified email date.
+  5. login user
+  6. authorize user
+
 */
 
 var TOKEN_USAGE_SIGNIN = 'pwless-signin'
@@ -247,7 +286,7 @@ function sendMail (req, res, next) {
   User.getByEmail(req.connectParams.email, function (err, user) {
     if (err) { return next(err) }
 
-    // TODO: There may be differences in processing delays
+    // The runtime of User.getByEmail may reveal
     // whether user has an account or not. This could potentially
     // be used for an attack.
 
