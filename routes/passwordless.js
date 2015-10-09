@@ -301,15 +301,8 @@ function renderSentMail (req, res, next) {
 
   var resendURL = url.parse(settings.issuer)
   resendURL.pathname = 'resend/passwordless'
-  resendURL.query = {
-    email: req.connectParams.email
-  }
-  if (req.connectParams) {
-    resendURL.query.redirect_uri = req.connectParams.redirect_uri
-    resendURL.query.client_id = req.connectParams.client_id
-    resendURL.query.response_type = req.connectParams.response_type
-    resendURL.query.scope = req.connectParams.scope
-  }
+  resendURL.query = {}
+  _.assign(resendURL.query, _.pick(req.connectParams, CONNECT_SUB_FIELDS))
   var locals = {
     from: mailer.from,
     resendURL: url.format(resendURL)
