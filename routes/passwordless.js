@@ -5,6 +5,8 @@
 var express = require('express')
 var _ = require('lodash')
 var url = require('url')
+var qs = require('qs')
+
 var settings = require('../boot/settings')
 var mailer = require('../boot/mailer')
 var authenticator = require('../lib/authenticator')
@@ -13,6 +15,7 @@ var User = require('../models/User')
 var OneTimeToken = require('../models/OneTimeToken')
 var InvalidRequestError = require('../errors/InvalidRequestError')
 var PasswordlessDisabledError = require('../errors/PasswordlessDisabledError')
+var renderSignin = require('../render/renderSignin')
 
 /**
  * Passwordless
@@ -202,7 +205,6 @@ function verifyPasswordlessNewUserSigninToken (req, res, next) {
 
   _.assign(userData, req.connectParams)
 
-
   User.insert(userData, userOptions, function (err, user) {
     if (err) {
       return res.render(view, {
@@ -222,8 +224,8 @@ function verifyPasswordlessNewUserSigninToken (req, res, next) {
 
 function signinRenderErrorInvalidEmail (req, res, next) {
   if (typeof req.connectParams.email === 'undefined') {
-    return res.render('signin', {
-      error: 'Please enter a valid e-mail address.'
+    return renderSignin(res, req.connectParams, {
+      formError: 'Please enter a valid e-mail address.'
     })
   }
   next()
