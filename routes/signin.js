@@ -4,7 +4,7 @@
 
 var oidc = require('../oidc')
 var settings = require('../boot/settings')
-var mailer = require('../boot/mailer').getMailer()
+var mailer = require('../boot/mailer')
 var authenticator = require('../lib/authenticator')
 var qs = require('qs')
 var InvalidRequestError = require('../errors/InvalidRequestError')
