@@ -4,7 +4,7 @@
 
 var settings = require('../boot/settings')
 var oidc = require('../oidc')
-var mailer = require('../boot/mailer').getMailer()
+var mailer = require('../boot/mailer')
 var authenticator = require('../lib/authenticator')
 var qs = require('qs')
 var NotFoundError = require('../errors/NotFoundError')
