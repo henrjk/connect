@@ -27,13 +27,16 @@ describe 'Passwordless signup get route', ->
 
   settings = require '../../../boot/settings'
 
-  tsSettings = new TestSettings(settings,
-    _.pick(settings, ['response_types_supported']))
+  tsSettings = {}
 
-  tsSettings.addSettings
-    issuer: 'https://test.issuer.com'
-    providers:
-      passwordless: {}
+  before ->
+    tsSettings = new TestSettings(settings,
+      _.pick(settings, ['response_types_supported']))
+
+    tsSettings.addSettings
+      issuer: 'https://test.issuer.com'
+      providers:
+        passwordless: {}
 
 
   after ->

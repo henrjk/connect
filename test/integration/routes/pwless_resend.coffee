@@ -28,22 +28,26 @@ describe 'Passwordless resend email route', ->
   settings = require '../../../boot/settings'
   mailer = require '../../../boot/mailer'
 
-  tsSettings = new TestSettings(settings,
+  tsSettings = {}
+  tsMailer = {}
+
+  before ->
+    tsSettings = new TestSettings(settings,
     _.pick(settings, ['response_types_supported']))
 
-  tsSettings.addSettings
-    issuer: 'https://test.issuer.com'
-    providers:
-      passwordless:
-        "tokenTTL-foo": 600
+    tsSettings.addSettings
+      issuer: 'https://test.issuer.com'
+      providers:
+        passwordless:
+          "tokenTTL-foo": 600
 
-  tsMailer = new TestSettings(mailer,
-    from: "from@example.com"
-    render: {}
-    sendMail: (tmpl, loc, opts, cb) ->
-      cb()
-    transport: {}
-    )
+    tsMailer = new TestSettings(mailer,
+      from: "from@example.com"
+      render: {}
+      sendMail: (tmpl, loc, opts, cb) ->
+        cb()
+      transport: {}
+      )
 
   after ->
     tsMailer.restore()
